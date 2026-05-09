@@ -4,8 +4,9 @@ import textwrap
 import streamlit as st
 from dotenv import load_dotenv
 import requests
+import pandas as pd
 
-from graph_builder import ingest_text, get_context_for_query, graph_stats
+from graph_builder import ingest_text, get_context_for_query, graph_stats, load_graph, GRAPH_PATH
 
 load_dotenv()
 
@@ -200,6 +201,16 @@ with st.sidebar:
             st.success(f"Document `{doc_id}` ingested successfully into the graph.")
 
     st.markdown("---")
+    st.markdown("#### LLM status")
+    provider = (get_setting("LLM_PROVIDER", "openai") or "openai").lower()
+    model_name = get_setting("MODEL_NAME")
+    has_key = bool(get_setting("LLM_API_KEY"))
+    st.caption(f"Provider: **{provider}**")
+    if model_name:
+        st.caption(f"Model: **{model_name}**")
+    st.caption(f"API key configured: **{'yes' if has_key else 'no'}**")
+
+    st.markdown("---")
     st.markdown("#### Graph status")
 
     num_nodes, num_edges, avg_degree, top_nodes = graph_stats()
@@ -211,6 +222,13 @@ with st.sidebar:
         st.caption("Top central entities")
         for name, deg in top_nodes[:5]:
             st.write(f"• **{name}** — degree {deg}")
+
+    if st.button("Reset graph (delete all data)", use_container_width=True, type="secondary"):
+        if GRAPH_PATH.exists():
+            GRAPH_PATH.unlink()
+        st.session_state.chat_history = []
+        st.success("Graph reset. Ingest a document to start again.")
+        st.rerun()
 
 
 col_left, col_right = st.columns([2.5, 1.5])
@@ -289,3 +307,69 @@ with col_right:
         4. An LLM answers using only that context for **grounded responses**.
         """
     )
+
+    st.markdown("### 🕸️ Graph explorer")
+    G = load_graph()
+    if len(G) == 0:
+        st.caption("No entities yet. Ingest a document to explore the graph.")
+    else:
+        node_degrees = sorted(G.degree, key=lambda x: x[1], reverse=True)
+        all_nodes = [n for n, _ in node_degrees]
+
+        search = st.text_input("Find entity", placeholder="Type to filter…", key="entity_search")
+        if search.strip():
+            filtered = [n for n in all_nodes if search.lower() in str(n).lower()]
+        else:
+            filtered = all_nodes
+
+        if not filtered:
+            st.info("No matches. Try a different search.")
+        else:
+            selected = st.selectbox(
+                "Entity",
+                options=filtered[:500],
+                index=0,
+                help="Explore an entity’s neighbors, supporting sentences, and source docs.",
+            )
+
+            node_data = G.nodes[selected]
+            st.caption(
+                f"Degree: **{G.degree(selected)}** · "
+                f"Docs: **{len(node_data.get('docs', []))}** · "
+                f"Sentences: **{len(node_data.get('sentences', []))}**"
+            )
+
+            neighbors = []
+            for neigh in G.neighbors(selected):
+                edge = G.get_edge_data(selected, neigh) or {}
+                neighbors.append(
+                    {
+                        "neighbor": neigh,
+                        "weight": int(edge.get("weight", 1)),
+                        "neighbor_degree": int(G.degree(neigh)),
+                    }
+                )
+
+            if neighbors:
+                df = pd.DataFrame(neighbors).sort_values(
+                    by=["weight", "neighbor_degree"], ascending=False
+                )
+                st.dataframe(df, use_container_width=True, hide_index=True)
+            else:
+                st.caption("No neighbors yet for this entity.")
+
+            with st.expander("Supporting sentences", expanded=False):
+                sentences = node_data.get("sentences", [])
+                if sentences:
+                    for s in sentences[:30]:
+                        st.write(f"- {s}")
+                else:
+                    st.caption("No sentences stored.")
+
+            with st.expander("Source documents", expanded=False):
+                docs = node_data.get("docs", [])
+                if docs:
+                    for d in docs:
+                        st.write(f"- {d}")
+                else:
+                    st.caption("No doc ids stored.")
