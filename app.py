@@ -9,9 +9,17 @@ from graph_builder import ingest_text, get_context_for_query, graph_stats
 
 load_dotenv()
 
-LLM_API_KEY = os.getenv("LLM_API_KEY")
-LLM_API_URL = os.getenv("LLM_API_URL")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+
+def get_setting(name: str, default: str | None = None) -> str | None:
+    value = os.getenv(name)
+    if value:
+        return value
+    try:
+        if name in st.secrets:
+            return str(st.secrets[name])
+    except Exception:
+        pass
+    return default
 
 
 st.set_page_config(
@@ -51,18 +59,22 @@ st.markdown(
 
 
 def call_llm(context: str, question: str) -> str:
-    if not LLM_API_KEY or not LLM_API_URL:
+    llm_api_key = get_setting("LLM_API_KEY")
+    llm_api_url = get_setting("LLM_API_URL")
+    model_name = get_setting("MODEL_NAME", "gpt-4o-mini")
+
+    if not llm_api_key or not llm_api_url:
         return (
             "LLM credentials are not configured. "
             "Please set LLM_API_KEY and LLM_API_URL as environment variables or Streamlit secrets."
         )
 
     headers = {
-        "Authorization": f"Bearer {LLM_API_KEY}",
+        "Authorization": f"Bearer {llm_api_key}",
         "Content-Type": "application/json",
     }
     payload = {
-        "model": MODEL_NAME,
+        "model": model_name,
         "messages": [
             {
                 "role": "system",
