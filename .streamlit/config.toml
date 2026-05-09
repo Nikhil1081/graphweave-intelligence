@@ -2,13 +2,13 @@
 enableStaticServing = true
 
 [theme]
-base = "light"
-primaryColor = "#01696f"
-backgroundColor = "#f7f6f2"
-secondaryBackgroundColor = "#fbfbf9"
-textColor = "#28251d"
+base = "dark"
+primaryColor = "#7C3AED"
+backgroundColor = "#050816"
+secondaryBackgroundColor = "#0B1225"
+textColor = "#E5E7EB"
 font = "sans serif"
 
 [theme.sidebar]
-backgroundColor = "#f3f0ec"
-textColor = "#28251d"
+backgroundColor = "#070B18"
+textColor = "#E5E7EB"

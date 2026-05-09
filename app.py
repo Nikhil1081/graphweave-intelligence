@@ -32,26 +32,96 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    /* App background */
+    [data-testid="stAppViewContainer"] {
+        background:
+          radial-gradient(900px circle at 8% 8%, rgba(124, 58, 237, 0.22), transparent 55%),
+          radial-gradient(800px circle at 92% 18%, rgba(34, 211, 238, 0.18), transparent 50%),
+          radial-gradient(700px circle at 30% 88%, rgba(59, 130, 246, 0.16), transparent 55%),
+          linear-gradient(180deg, #050816 0%, #050816 55%, #070A16 100%);
+    }
+
+    /* Sidebar polish */
+    [data-testid="stSidebar"] {
+        border-right: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* Typography */
     .big-title {
-        font-size: 2.2rem;
-        font-weight: 700;
-        margin-bottom: 0.25rem;
+        font-size: 2.3rem;
+        font-weight: 800;
+        margin-bottom: 0.35rem;
+        letter-spacing: -0.02em;
+        background: linear-gradient(90deg, #A78BFA 0%, #22D3EE 55%, #60A5FA 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
     }
     .subtitle {
-        color: #6b7280;
-        font-size: 0.95rem;
-        margin-bottom: 1.5rem;
+        color: rgba(229,231,235,0.78);
+        font-size: 0.98rem;
+        margin-bottom: 1.35rem;
+        line-height: 1.45;
     }
+
+    /* Pills */
     .pill {
         display: inline-flex;
         align-items: center;
-        padding: 0.25rem 0.75rem;
+        padding: 0.28rem 0.75rem;
         border-radius: 999px;
-        background: rgba(1,105,111,0.08);
-        color: #01696f;
-        font-size: 0.8rem;
-        font-weight: 600;
+        background: linear-gradient(90deg, rgba(124,58,237,0.22), rgba(34,211,238,0.18));
+        border: 1px solid rgba(255,255,255,0.10);
+        color: rgba(229,231,235,0.92);
+        font-size: 0.82rem;
+        font-weight: 650;
         margin-right: 0.5rem;
+        backdrop-filter: blur(10px);
+    }
+
+    /* “Card” feel for common containers */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: rgba(11,18,37,0.50);
+        backdrop-filter: blur(10px);
+    }
+
+    /* Inputs */
+    .stTextInput input,
+    .stTextArea textarea,
+    .stSelectbox div[data-baseweb="select"] > div {
+        border-radius: 12px !important;
+        border: 1px solid rgba(255,255,255,0.14) !important;
+        background: rgba(5,8,22,0.55) !important;
+    }
+
+    /* Buttons */
+    .stButton > button {
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: linear-gradient(90deg, rgba(124,58,237,0.85), rgba(34,211,238,0.75));
+        color: #0B1025;
+        font-weight: 750;
+    }
+    .stButton > button:hover {
+        filter: brightness(1.06);
+        border-color: rgba(255,255,255,0.20);
+    }
+
+    /* Metrics */
+    [data-testid="stMetric"] {
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: rgba(5,8,22,0.35);
+    }
+
+    /* Dataframe */
+    [data-testid="stDataFrame"] {
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.10);
     }
     </style>
     """,
