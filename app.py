@@ -1,10 +1,13 @@
 import os
 import textwrap
+import io
 
 import streamlit as st
 from dotenv import load_dotenv
 import requests
 import pandas as pd
+from pypdf import PdfReader
+from docx import Document
 
 from graph_builder import ingest_text, get_context_for_query, graph_stats, load_graph, GRAPH_PATH
 
@@ -238,7 +241,7 @@ with st.sidebar:
     st.markdown("#### Ingest documents")
     mode = st.radio(
         "Source",
-        options=["Paste text", "Upload .txt"],
+        options=["Paste text", "Upload files"],
         index=0,
         help="Start with simple text; you can add more documents over time.",
     )
@@ -248,11 +251,34 @@ with st.sidebar:
         placeholder="e.g. policy-001 or sprint-notes-2026-05-09",
     )
 
+    def _text_from_upload(uploaded_file) -> str:
+        name = (uploaded_file.name or "").lower()
+        raw = uploaded_file.getvalue()
+
+        if name.endswith(".pdf"):
+            reader = PdfReader(io.BytesIO(raw))
+            pages = []
+            for page in reader.pages:
+                pages.append(page.extract_text() or "")
+            return "\n\n".join(pages).strip()
+
+        if name.endswith(".docx"):
+            doc = Document(io.BytesIO(raw))
+            return "\n".join(p.text for p in doc.paragraphs).strip()
+
+        # txt / md fallback
+        return raw.decode("utf-8", errors="ignore").strip()
+
     uploaded_text = ""
-    if mode == "Upload .txt":
-        file = st.file_uploader("Upload a text file", type=["txt"])
-        if file is not None:
-            uploaded_text = file.read().decode("utf-8")
+    uploaded_files = []
+    if mode == "Upload files":
+        uploaded_files = st.file_uploader(
+            "Upload documents",
+            type=["txt", "md", "pdf", "docx"],
+            accept_multiple_files=True,
+            help="Supported: .txt, .md, .pdf, .docx",
+        )
+        st.caption("Tip: If Document ID is empty, the filename will be used.")
     else:
         uploaded_text = st.text_area(
             "Paste document text",
@@ -261,14 +287,35 @@ with st.sidebar:
         )
 
     if st.button("Ingest into Knowledge Graph", use_container_width=True):
-        if not doc_id.strip():
-            st.error("Please provide a document ID.")
-        elif not uploaded_text.strip():
-            st.error("Please provide some text to ingest.")
+        if mode == "Upload files":
+            if not uploaded_files:
+                st.error("Please upload at least one file.")
+            else:
+                with st.spinner("Extracting text and building knowledge graph..."):
+                    ok = 0
+                    for f in uploaded_files:
+                        inferred_id = (doc_id.strip() or f.name).strip()
+                        try:
+                            text = _text_from_upload(f)
+                            if not text:
+                                continue
+                            ingest_text(inferred_id, text)
+                            ok += 1
+                        except Exception as e:
+                            st.warning(f"Failed to ingest `{f.name}`: {e}")
+                if ok:
+                    st.success(f"Ingested {ok} document(s) successfully.")
+                else:
+                    st.error("No text could be extracted from the uploaded file(s).")
         else:
-            with st.spinner("Building knowledge graph from this document..."):
-                ingest_text(doc_id.strip(), uploaded_text)
-            st.success(f"Document `{doc_id}` ingested successfully into the graph.")
+            if not doc_id.strip():
+                st.error("Please provide a document ID.")
+            elif not uploaded_text.strip():
+                st.error("Please provide some text to ingest.")
+            else:
+                with st.spinner("Building knowledge graph from this document..."):
+                    ingest_text(doc_id.strip(), uploaded_text)
+                st.success(f"Document `{doc_id}` ingested successfully into the graph.")
 
     st.markdown("---")
     st.markdown("#### LLM status")
