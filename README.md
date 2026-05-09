@@ -23,3 +23,13 @@ streamlit run app.py
 ```
 
 Set your LLM credentials via `.env` or Streamlit secrets.
+
+### Streamlit Community Cloud secrets (Gemini)
+
+In Streamlit Cloud → App settings → Secrets:
+
+```toml
+LLM_PROVIDER = "gemini"
+LLM_API_KEY = "PASTE_YOUR_GEMINI_KEY"
+MODEL_NAME = "gemini-1.5-flash"
+```

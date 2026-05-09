@@ -62,11 +62,64 @@ def call_llm(context: str, question: str) -> str:
     llm_api_key = get_setting("LLM_API_KEY")
     llm_api_url = get_setting("LLM_API_URL")
     model_name = get_setting("MODEL_NAME", "gpt-4o-mini")
+    provider = (get_setting("LLM_PROVIDER", "openai") or "openai").lower()
 
-    if not llm_api_key or not llm_api_url:
+    if not llm_api_key:
         return (
             "LLM credentials are not configured. "
             "Please set LLM_API_KEY and LLM_API_URL as environment variables or Streamlit secrets."
+        )
+
+    if provider == "gemini":
+        # Gemini (Google AI Studio) API
+        # Docs: https://ai.google.dev/gemini-api/docs
+        if not model_name:
+            model_name = "gemini-1.5-flash"
+
+        url = (
+            llm_api_url
+            or f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+        )
+
+        payload = {
+            "systemInstruction": {
+                "parts": [
+                    {
+                        "text": (
+                            "You are an assistant that answers using only the provided enterprise context. "
+                            "If the context is insufficient, clearly say so and do NOT hallucinate."
+                        )
+                    }
+                ]
+            },
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": f"Context:\n{context}\n\nQuestion: {question}"}],
+                }
+            ],
+            "generationConfig": {"temperature": 0.2},
+        }
+
+        try:
+            resp = requests.post(url, params={"key": llm_api_key}, json=payload, timeout=40)
+            resp.raise_for_status()
+            data = resp.json()
+            return (
+                data.get("candidates", [{}])[0]
+                .get("content", {})
+                .get("parts", [{}])[0]
+                .get("text", "")
+                .strip()
+            )
+        except Exception as e:
+            return f"Error calling Gemini: {e}"
+
+    # Default: OpenAI-compatible Chat Completions API
+    if not llm_api_url:
+        return (
+            "LLM_API_URL is missing. "
+            "Set it to your provider endpoint (e.g. OpenAI chat completions URL) or switch to Gemini with LLM_PROVIDER=gemini."
         )
 
     headers = {
@@ -92,7 +145,7 @@ def call_llm(context: str, question: str) -> str:
     }
 
     try:
-        resp = requests.post(LLM_API_URL, headers=headers, json=payload, timeout=40)
+        resp = requests.post(llm_api_url, headers=headers, json=payload, timeout=40)
         resp.raise_for_status()
         data = resp.json()
         return data["choices"][0]["message"]["content"].strip()
